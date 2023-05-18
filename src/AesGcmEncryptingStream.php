@@ -58,7 +58,7 @@ class AesGcmEncryptingStream implements StreamInterface
                 . " ensure you have provided a valid key size and initialization vector.");
         }
 
-        return Psr7\stream_for($cipherText);
+        return Psr7\Utils::streamFor($cipherText);
     }
 
     public function getTag(): string

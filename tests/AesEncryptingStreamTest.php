@@ -4,6 +4,7 @@ namespace Jsq\EncryptionStreams;
 use GuzzleHttp\Psr7;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\StreamInterface;
+use function PHPUnit\Framework\throwException;
 
 class AesEncryptingStreamTest extends TestCase
 {
@@ -150,7 +151,7 @@ class AesEncryptingStreamTest extends TestCase
         CipherMethod $cipherMethod
     ){
         $stream = new AesEncryptingStream(
-            Psr7\stream_for(''),
+            Psr7\Utils::streamFor(''),
             'foo',
             $cipherMethod
         );
@@ -166,11 +167,12 @@ class AesEncryptingStreamTest extends TestCase
      *
      * @param CipherMethod $cipherMethod
      *
-     * @expectedException \LogicException
+     *
      */
     public function testDoesNotSupportSeekingFromEnd(CipherMethod $cipherMethod)
     {
-        $stream = new AesEncryptingStream(Psr7\stream_for('foo'), 'foo', $cipherMethod);
+        $this->expectException(\LogicException::class);
+        $stream = new AesEncryptingStream(Psr7\Utils::streamFor('foo'), 'foo', $cipherMethod);
 
         $stream->seek(1, SEEK_END);
     }
@@ -184,7 +186,7 @@ class AesEncryptingStreamTest extends TestCase
         CipherMethod $cipherMethod
     ){
         $stream = new AesEncryptingStream(
-            Psr7\stream_for(random_bytes(2 * self::MB)),
+            Psr7\Utils::streamFor(random_bytes(2 * self::MB)),
             'foo',
             $cipherMethod
         );
@@ -195,12 +197,14 @@ class AesEncryptingStreamTest extends TestCase
     }
     public function testEmitsErrorWhenEncryptionFails()
     {
-        // Capture the error in a custom handler to avoid PHPUnit's error trap
         set_error_handler(function ($_, $message) use (&$error) {
             $error = $message;
         });
 
-        // Trigger an openssl error by supplying an invalid key size
+        if (PHP_VERSION_ID > 70400) {
+            $this->expectException(EncryptionFailedException::class);
+        }
+
         $_ = (string) new AesEncryptingStream(new RandomByteStream(self::MB), self::KEY,
             new class implements CipherMethod {
                 public function getCurrentIv(): string { return 'iv'; }
@@ -214,6 +218,23 @@ class AesEncryptingStreamTest extends TestCase
                 public function seek(int $offset, int $whence = SEEK_SET): void {}
             });
 
-        $this->assertRegExp("/EncryptionFailedException: Unable to encrypt/", $error);
+        $this->assertRegExp('/EncryptionFailedException: Unable to encrypt/', $error);
+    }
+
+    public function testSupportsReadLength1()
+    {
+        $key = "keyy";
+        $plain = str_repeat("a", 49);
+        $iv = hex2bin("5dfe91624ede1efc6bc1c90e1932c398");
+
+        $cipherMethod = new Cbc($iv, $keySize=128);
+        $e = new AesEncryptingStream(Psr7\Utils::streamFor($plain), $key, $cipherMethod);
+
+        $result = "";
+        for ($i = 0; $i < 100; $i++) {
+            $result .= $e->read(1);
+        }
+
+        $this->assertEquals(64, strlen($result));
     }
 }

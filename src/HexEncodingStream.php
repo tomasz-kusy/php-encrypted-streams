@@ -33,7 +33,7 @@ class HexEncodingStream implements StreamInterface
 
     public function read($length): string
     {
-        $this->buffer .= bin2hex($this->stream->read(ceil($length / 2)));
+        $this->buffer .= bin2hex($this->stream->read((int)ceil($length / 2)));
 
         $toReturn = substr($this->buffer, 0, $length);
         $this->buffer = substr($this->buffer, $length);

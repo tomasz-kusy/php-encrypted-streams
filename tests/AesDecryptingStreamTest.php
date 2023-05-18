@@ -34,7 +34,7 @@ class AesDecryptingStreamTest extends TestCase
         );
 
         $this->assertSame(
-            (string) new AesDecryptingStream(Psr7\stream_for($cipherText), self::KEY, $iv),
+            (string) new AesDecryptingStream(Psr7\Utils::streamFor($cipherText), self::KEY, $iv),
             $plainText
         );
     }
@@ -59,7 +59,7 @@ class AesDecryptingStreamTest extends TestCase
             $iv->getCurrentIv()
         );
         $deciphered = new AesDecryptingStream(
-            Psr7\stream_for($cipherText),
+            Psr7\Utils::streamFor($cipherText),
             self::KEY,
             $iv
         );
@@ -90,7 +90,7 @@ class AesDecryptingStreamTest extends TestCase
             OPENSSL_RAW_DATA,
             $iv->getCurrentIv()
         );
-        $deciphered = new AesDecryptingStream(Psr7\stream_for($cipherText), self::KEY, $iv);
+        $deciphered = new AesDecryptingStream(Psr7\Utils::streamFor($cipherText), self::KEY, $iv);
         $read = $deciphered->read(strlen($plainText) + AesDecryptingStream::BLOCK_SIZE);
         $this->assertSame($plainText, $read);
     }
@@ -114,7 +114,7 @@ class AesDecryptingStreamTest extends TestCase
             OPENSSL_RAW_DATA,
             $iv->getCurrentIv()
         );
-        $deciphered = new AesDecryptingStream(Psr7\stream_for($cipherText), self::KEY, $iv);
+        $deciphered = new AesDecryptingStream(Psr7\Utils::streamFor($cipherText), self::KEY, $iv);
         $firstBytes = $deciphered->read(256 * 2 + 3);
         $deciphered->rewind();
         $this->assertSame($firstBytes, $deciphered->read(256 * 2 + 3));
@@ -151,11 +151,9 @@ class AesDecryptingStreamTest extends TestCase
         $this->assertFalse($stream->isWritable());
     }
 
-    /**
-     * @expectedException \LogicException
-     */
     public function testDoesNotSupportArbitrarySeeking()
     {
+        $this->expectException(\LogicException::class);
         $stream = new AesDecryptingStream(
             new RandomByteStream(124 * self::MB),
             'foo',
@@ -174,7 +172,7 @@ class AesDecryptingStreamTest extends TestCase
         CipherMethod $cipherMethod
     ) {
         $stream = new AesDecryptingStream(
-            new AesEncryptingStream(Psr7\stream_for(''), self::KEY, clone $cipherMethod),
+            new AesEncryptingStream(Psr7\Utils::streamFor(''), self::KEY, clone $cipherMethod),
             self::KEY,
             $cipherMethod
         );
@@ -190,12 +188,77 @@ class AesDecryptingStreamTest extends TestCase
             $error = $message;
         });
 
+        if (PHP_VERSION_ID > 70400) {
+            $this->expectException(DecryptionFailedException::class);
+        }
+
         // Trigger a decryption failure by attempting to decrypt gibberish
         // Not all cipher methods will balk (CTR, for example, will simply
         // decrypt gibberish into gibberish), so CBC is used.
         $_ = (string) new AesDecryptingStream(new RandomByteStream(self::MB), self::KEY,
             new Cbc(random_bytes(openssl_cipher_iv_length('aes-256-cbc'))));
 
-        $this->assertRegExp("/DecryptionFailedException: Unable to decrypt/", $error);
+        $this->assertRegExp('/DecryptionFailedException: Unable to decrypt/', $error);
+    }
+
+
+    /**
+     * @dataProvider cipherMethodProvider
+     *
+     * @param CipherMethod $iv
+     */
+    public function testSupportsReadLength1(CipherMethod $iv)
+    {
+        $plain = str_repeat("0", 100);
+        $cipherStream = new AesEncryptingStream(Psr7\Utils::streamFor($plain), self::KEY, clone $iv);
+        $stream = new AesDecryptingStream($cipherStream, self::KEY, clone $iv);
+
+        $result = "";
+        for ($i = 0; $i < 100; $i++) {
+            $result .= $stream->read(1);
+        }
+
+        $this->assertEquals($plain, $result);
+    }
+
+    /**
+     * @dataProvider cipherMethodProvider
+     *
+     * @param CipherMethod $iv
+     */
+    public function testDataEndsWithEof(CipherMethod $iv)
+    {
+        $plain = str_repeat("0", 100);
+        $cipherStream = new AesEncryptingStream(Psr7\Utils::streamFor($plain), self::KEY, clone $iv);
+        $stream = new AesDecryptingStream($cipherStream, self::KEY, clone $iv);
+
+        while (!$stream->eof()) {
+            $stream->read(1);
+        }
+        $this->assertSame('', $stream->read(1));
+    }
+
+
+    public function testAccurateTellWithPaddedEncryptionMethod()
+    {
+        $iv = new Cbc(random_bytes(openssl_cipher_iv_length('aes-256-cbc')));
+        $cipherText = openssl_encrypt(
+            random_bytes(2 * 1024 * 1024),
+            $iv->getOpenSslName(),
+            self::KEY,
+            OPENSSL_RAW_DATA,
+            $iv->getCurrentIv()
+        );
+        $stream = new AesDecryptingStream(Psr7\Utils::streamFor($cipherText), self::KEY, clone $iv);
+
+        $stream->rewind();
+        $data = $stream->read(8192);
+        $this->assertEquals(strlen($data), $stream->tell());
+
+        $stream->rewind();
+        $limitStream = new Psr7\LimitStream($stream, self::MB, 0);
+        $buffer = Psr7\Utils::streamFor();
+        Psr7\Utils::copyToStream($limitStream, $buffer);
+        $this->assertEquals(self::MB, $buffer->getSize());
     }
 }

@@ -14,14 +14,14 @@ trait AesEncryptionStreamTestTrait
             for ($j = 0; $j < count($this->cipherMethodProvider()); $j++) {
                 $toReturn []= [
                     // Test each string with standard temp streams
-                    Psr7\stream_for($plainTexts[$i]),
+                    Psr7\Utils::streamFor($plainTexts[$i]),
                     $plainTexts[$i],
                     $this->cipherMethodProvider()[$j][0]
                 ];
 
                 $toReturn []= [
                     // Test each string with a stream that does not know its own size
-                    Psr7\stream_for((function ($pt) { yield $pt; })($plainTexts[$i])),
+                    Psr7\Utils::streamFor((function ($pt) { yield $pt; })($plainTexts[$i])),
                     $plainTexts[$i],
                     $this->cipherMethodProvider()[$j][0]
                 ];
@@ -41,14 +41,14 @@ trait AesEncryptionStreamTestTrait
             for ($j = 0; $j < count($keySizes); $j++) {
                 $toReturn []= [
                     // Test each string with standard temp streams
-                    Psr7\stream_for($plainTexts[$i]),
+                    Psr7\Utils::streamFor($plainTexts[$i]),
                     $plainTexts[$i],
                     $keySizes[$j],
                 ];
 
                 $toReturn []= [
                     // Test each string with a stream that does not know its own size
-                    Psr7\stream_for((function ($pt) { yield $pt; })($plainTexts[$i])),
+                    Psr7\Utils::streamFor((function ($pt) { yield $pt; })($plainTexts[$i])),
                     $plainTexts[$i],
                     $keySizes[$j],
                 ];

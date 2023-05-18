@@ -11,7 +11,7 @@ class HexDecodingStreamTest extends TestCase
 
     public function testEncodingShouldMatchHex2BinOutput()
     {
-        $stream = Psr7\stream_for(bin2hex(random_bytes(1027)));
+        $stream = Psr7\Utils::streamFor(bin2hex(random_bytes(1027)));
         $encodingStream = new HexDecodingStream($stream);
 
         $this->assertSame(hex2bin($stream), (string) $encodingStream);
@@ -19,7 +19,7 @@ class HexDecodingStreamTest extends TestCase
 
     public function testShouldReportSizeOfDecodedStream()
     {
-        $stream = Psr7\stream_for(bin2hex(random_bytes(1027)));
+        $stream = Psr7\Utils::streamFor(bin2hex(random_bytes(1027)));
         $encodingStream = new HexDecodingStream($stream);
 
         $this->assertSame(strlen(hex2bin($stream)), $encodingStream->getSize());

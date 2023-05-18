@@ -31,8 +31,8 @@ $key = 'some-secret-password-here';
 
 $inStream = new Stream(fopen('some-input-file', 'r')); // Any PSR-7 stream will be fine here
 $cipherTextStream = new AesEncryptingStream($inStream, $key, $cipherMethod); // Wrap the stream in an EncryptingStream
-$cipherTextFile = Psr7\stream_for(fopen('encrypted.file', 'w'));
-Psr7\copy_to_stream($cipherTextStream, $cipherTextFile); // When you read from the encrypting stream, the data will be encrypted.
+$cipherTextFile = \GuzzleHttp\Psr7\Utils::streamFor(fopen('encrypted.file', 'w'));
+\GuzzleHttp\Psr7\Utils::copyToStream($cipherTextStream, $cipherTextFile); // When you read from the encrypting stream, the data will be encrypted.
 
 // You'll also need to store the IV somewhere, because we'll need it later to decrypt the data.
 // In this case, I'll base64 encode it and stick it in a file (but we could put it anywhere where we can retrieve it later, like a database column)
@@ -83,7 +83,7 @@ $cipherText = openssl_encrypt(
 $expectedHash = hash('sha256', $cipherText);
 
 $hashingDecorator = new Jsq\EncryptingStreams\HashingStream(
-    GuzzleHttp\Psr7\stream_for($cipherText),
+    \GuzzleHttp\Psr7\Utils::streamFor($cipherText),
     $key,
     function ($hash) use ($expectedHash) {
         if ($hash !== $expectedHash) {

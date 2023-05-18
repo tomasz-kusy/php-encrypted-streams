@@ -10,7 +10,7 @@ class Base64DecodingStreamTest extends TestCase
 
     public function testEncodingShouldMatchBase64_DecodeOutput()
     {
-        $stream = Psr7\stream_for(base64_encode(random_bytes(1027)));
+        $stream = Psr7\Utils::streamFor(base64_encode(random_bytes(1027)));
         $encodingStream = new Base64DecodingStream($stream);
 
         $this->assertSame(base64_decode($stream), (string) $encodingStream);
@@ -19,7 +19,7 @@ class Base64DecodingStreamTest extends TestCase
     public function testShouldReportNullAsSize()
     {
         $encodingStream = new Base64DecodingStream(
-            Psr7\stream_for(base64_encode(random_bytes(1027)))
+            Psr7\Utils::streamFor(base64_encode(random_bytes(1027)))
         );
 
         $this->assertNull($encodingStream->getSize());

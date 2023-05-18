@@ -16,7 +16,7 @@ class HashingStreamTest extends TestCase
     {
         $toHash = random_bytes(1025);
         $instance = new HashingStream(
-            Psr7\stream_for($toHash),
+            Psr7\Utils::streamFor($toHash),
             null,
             function ($hash) use ($toHash, $algorithm) {
                 $this->assertSame(hash($algorithm, $toHash, true), $hash);
@@ -43,7 +43,7 @@ class HashingStreamTest extends TestCase
         $key = 'secret key';
         $toHash = random_bytes(1025);
         $instance = new HashingStream(
-            Psr7\stream_for($toHash),
+            Psr7\Utils::streamFor($toHash),
             $key,
             function ($hash) use ($toHash, $key, $algorithm) {
                 $this->assertSame(
@@ -73,7 +73,7 @@ class HashingStreamTest extends TestCase
         $toHash = random_bytes(1025);
         $callCount = 0;
         $instance = new HashingStream(
-            Psr7\stream_for($toHash),
+            Psr7\Utils::streamFor($toHash),
             $key,
             function ($hash) use ($toHash, $key, $algorithm, &$callCount) {
                 ++$callCount;
@@ -95,17 +95,11 @@ class HashingStreamTest extends TestCase
     public function hmacAlgorithmProvider()
     {
         $cryptoHashes = [];
-        foreach (hash_algos() as $algo) {
-            // As of PHP 7.2, feeding a non-cryptographic hashing
-            // algorithm to `hash_init` will trigger an error, and
-            // feeding one to `hash_hmac` will cause the function to
-            // return `false`.
-            // cf https://www.php.net/manual/en/migration72.incompatible.php#migration72.incompatible.hash-functions
-            if (@hash_hmac($algo, 'data', 'secret key')) {
-                $cryptoHashes []= [$algo];
+        foreach (hash_hmac_algos() as $algo) {
+            if (hash_hmac($algo, 'data', 'secret key')) {
+                $cryptoHashes[] = [$algo];
             }
         }
-
         return $cryptoHashes;
     }
 
@@ -114,12 +108,10 @@ class HashingStreamTest extends TestCase
         return array_map(function ($algo) { return [$algo]; }, hash_algos());
     }
 
-    /**
-     * @expectedException \LogicException
-     */
     public function testDoesNotSupportArbitrarySeeking()
     {
-        $instance = new HashingStream(Psr7\stream_for(random_bytes(1025)));
+        $this->expectException(\LogicException::class);
+        $instance = new HashingStream(Psr7\Utils::streamFor(random_bytes(1025)));
         $instance->seek(1);
     }
 }

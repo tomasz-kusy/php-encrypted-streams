@@ -30,7 +30,7 @@ class Base64DecodingStream implements StreamInterface
 
     public function read($length): string
     {
-        $toRead = ceil($length / 3) * 4;
+        $toRead = (int) ceil($length / 3) * 4;
         $this->buffer .= base64_decode($this->stream->read($toRead));
 
         $toReturn = substr($this->buffer, 0, $length);

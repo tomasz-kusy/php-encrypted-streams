@@ -59,7 +59,7 @@ class AesGcmDecryptingStream implements StreamInterface
                 . " ensure you have provided a valid key size, initialization vector, and key.");
         }
 
-        return Psr7\stream_for($plaintext);
+        return Psr7\Utils::streamFor($plaintext);
     }
 
     public function isWritable(): bool

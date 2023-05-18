@@ -34,7 +34,7 @@ class AesGcmDecryptingStreamTest extends TestCase
         );
 
         $decryptingStream = new AesGcmDecryptingStream(
-            Psr7\stream_for($cipherText),
+            Psr7\Utils::streamFor($cipherText),
             self::KEY,
             $iv,
             $tag,
@@ -49,7 +49,7 @@ class AesGcmDecryptingStreamTest extends TestCase
     public function testIsNotWritable()
     {
         $decryptingStream = new AesGcmDecryptingStream(
-            Psr7\stream_for(''),
+            Psr7\Utils::streamFor(''),
             self::KEY,
             random_bytes(openssl_cipher_iv_length('aes-256-gcm')),
             'tag'
@@ -65,6 +65,9 @@ class AesGcmDecryptingStreamTest extends TestCase
             $error = $message;
         });
 
+        if (PHP_VERSION_ID > 70400) {
+            $this->expectException(DecryptionFailedException::class);
+        }
         // Trigger a decryption failure by attempting to decrypt gibberish
         $_ = (string) new AesGcmDecryptingStream(
             new RandomByteStream(1024 * 1024),
@@ -72,7 +75,6 @@ class AesGcmDecryptingStreamTest extends TestCase
             random_bytes(openssl_cipher_iv_length('aes-256-gcm')),
             'tag'
         );
-
-        $this->assertRegExp("/DecryptionFailedException: Unable to decrypt/", $error);
+        $this->assertRegExp('/DecryptionFailedException: Unable to decrypt data/', $error);
     }
 }

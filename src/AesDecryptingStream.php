@@ -46,9 +46,9 @@ class AesDecryptingStream implements StreamInterface
         $this->cipherMethod = clone $cipherMethod;
     }
 
-    public function eof()
+    public function eof(): bool
     {
-        return $this->cipherBuffer === '' && $this->stream->eof();
+        return $this->plainBuffer === '' && $this->cipherBuffer === '' && $this->stream->eof();
     }
 
     public function getSize(): ?int
@@ -79,10 +79,9 @@ class AesDecryptingStream implements StreamInterface
             );
         }
 
-        $data = substr($this->plainBuffer, 0, $length);
-        $this->plainBuffer = substr($this->plainBuffer, $length);
-
-        return $data ? $data : '';
+        $data = (string)substr($this->plainBuffer, 0, $length);
+        $this->plainBuffer = (string)substr($this->plainBuffer, $length);
+        return $data;
     }
 
     public function seek($offset, $whence = SEEK_SET): void
@@ -96,6 +95,11 @@ class AesDecryptingStream implements StreamInterface
             throw new LogicException('AES encryption streams only support being'
                 . ' rewound, not arbitrary seeking.');
         }
+    }
+
+    public function tell(): int
+    {
+        return $this->stream->tell() - strlen($this->cipherBuffer);
     }
 
     private function decryptBlock(int $length): string

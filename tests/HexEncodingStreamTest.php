@@ -12,7 +12,7 @@ class HexEncodingStreamTest extends TestCase
     public function testEncodingShouldMatchBin2HexOutput()
     {
         $bytes = random_bytes(self::MB + 3);
-        $encodingStream = new HexEncodingStream(Psr7\stream_for($bytes));
+        $encodingStream = new HexEncodingStream(Psr7\Utils::streamFor($bytes));
 
         $this->assertSame(bin2hex($bytes), (string) $encodingStream);
     }
@@ -20,7 +20,7 @@ class HexEncodingStreamTest extends TestCase
     public function testShouldReportSizeOfEncodedStream()
     {
         $bytes = random_bytes(self::MB + 3);
-        $encodingStream = new HexEncodingStream(Psr7\stream_for($bytes));
+        $encodingStream = new HexEncodingStream(Psr7\Utils::streamFor($bytes));
 
         $this->assertSame(strlen(bin2hex($bytes)), $encodingStream->getSize());
     }
