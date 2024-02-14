@@ -76,7 +76,7 @@ class Ctr implements CipherMethod
 
     public function update(string $cipherTextBlock): void
     {
-        $this->incrementOffset(strlen($cipherTextBlock) / self::BLOCK_SIZE);
+        $this->incrementOffset((int) (strlen($cipherTextBlock) / self::BLOCK_SIZE));
     }
 
     /**
